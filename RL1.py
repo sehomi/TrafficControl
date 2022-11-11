@@ -9,10 +9,6 @@ Created on Fri Nov  4 14:53:26 2022
 # !pip install stable-baselines3[extra]
 
 from gym.spaces import Box, MultiDiscrete, Discrete
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3 import PPO
 from gym import Env
 from gym import spaces
 from sumolib import checkBinary
@@ -38,8 +34,8 @@ class CustomEnv(Env):
     def __init__(self):
         # super().__init__(self, CustomEnv)
         # super(CustomEnv, self).__init__()
-        self.sumoBinary = checkBinary('sumo-gui')  # adding -gui  opens sumo-gui
-        self.sumoCmd = [self.sumoBinary, "-c", "LnCanada2.sumocfg"]
+        self.sumoBinary = checkBinary('sumo')  # adding -gui  opens sumo-gui
+        self.sumoCmd = [self.sumoBinary, "-c", "/content/TrafficControl/sumo/LnCanada2.sumocfg"]
         self.time = 0
         self.action_space = spaces.Discrete(2)
         # Set the action space to 2 discrete values i.e green, red
@@ -51,6 +47,8 @@ class CustomEnv(Env):
     #-------------------------------------------------------------------------       
     def reset(self):
         self.time = 0
+
+        print("Environment Reset.")
     
     #-------------------------------------------------------------------------
     def render(self):
@@ -58,11 +56,13 @@ class CustomEnv(Env):
     
     #-------------------------------------------------------------------------
     def step(self):
-        #part1
+
+        print("Step. time: {:d}".format(self.time))
+
+        # part1
         if self.time == 0 :
             traci.start(self.sumoCmd)
-        else : 
-            pass
+
         #part2
         traci.simulationStep()
         self.time += 1
@@ -79,12 +79,16 @@ class CustomEnv(Env):
         
 #=============================================================================
 
+print("Creating Environment.")
+
 env = CustomEnv()
 env.reset()
+
 done = False
 while not done :
     done = env.step()
-print('simulation finished')    
+
+print('Simulation Finished.')    
 
 
 # #=============================================================================
