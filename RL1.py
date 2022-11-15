@@ -50,37 +50,49 @@ class CustomEnv(Env):
         
     def initializeVariables(self):
         
-        self.trafficLights = traci.trafficlight.getIDList()
+        trafficLights = traci.trafficlight.getIDList()
+        self.lane_light_mapping = self.getLaneLightMapping(trafficLights)
         self.time = 0
-        self.initializeDimensions()
+        # self.initializeDimensions()
         
                 
-    def getTrafficLightsQueuesLenghts(self):
-    
-        queues_lens = []
-        for tl in self.trafficLights:
+    def getLaneQueueLength(self, lane):
             
-            lanes = traci.trafficlight.getControlledLanes(tl)
-            
-            tl_halting_vehicles = 0
-            
-            for lane in lanes:
-                haltingVehicles = traci.lane.getLastStepHaltingNumber(lane)
-                tl_halting_vehicles += haltingVehicles
-            
-            queues_lens.append(tl_halting_vehicles)
-            
-        return queues_lens  
+        return traci.lane.getLastStepHaltingNumber(lane)  
     
 
-    def setTrafficLightStates(self, actions):
+    def getLaneLightMapping(self, trafficLights):
         
-        assert len(actions) == self.actionSpaceDims
+        lane_light_mapping = {}
         
-        tlstates = ['gggggggggggggggg' if a else 'rrrrrrrrrrrrrrrr' for a in actions]
+        for i, tl in enumerate(trafficLights):
+            
+            links = traci.trafficlight.getControlledLinks(tl)
+            
+            for j, link in enumerate(links):
+                if len(link) > 0:
+                    lane_incoming = link[0][0]
+                    lane_outgoing = link[0][1]
+                    lane_via = link[0][2]
+                    
+                    if lane_incoming not in lane_light_mapping.keys():
+                        lane_light_mapping[lane_incoming] = [{'traffic_light':tl, 'link_index':j}]
+                    else:
+                        lane_light_mapping[lane_incoming].append({'traffic_light':tl, 'link_index':j})
         
-        for i, tl in enumerate(self.trafficLights):
-            traci.trafficlight.setRedYellowGreenState(tl, tlstates[i])
+        return lane_light_mapping
+    
+        
+    def setTrafficLightOfLane(self, lane, state):
+        
+        vals = self.lane_light_mapping[lane]
+        
+        for val in vals:
+            tl = val['traffic_light']
+            index = val['link_index']
+            print('setting traffic_light {}, index {:d}'.format(tl, index))
+            traci.trafficlight.setLinkState(tl, index, state)
+                        
             
     #-------------------------------------------------------------------------       
     def reset(self):
@@ -102,9 +114,13 @@ class CustomEnv(Env):
         traci.simulationStep()
         self.time += 1
     
-        self.setTrafficLightStates([1 for i in range(self.actionSpaceDims)])
-        ql = self.getTrafficLightsQueuesLenghts()
-        print(ql)
+        for lane, val in self.lane_light_mapping.items():
+            queue_len = self.getLaneQueueLength(lane)
+            if queue_len > 5:
+                self.setTrafficLightOfLane(lane, 'g')
+            else:
+                self.setTrafficLightOfLane(lane, 'r')
+
         
         if self.time == 3600 :
             done = True
