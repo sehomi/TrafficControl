@@ -115,6 +115,7 @@ class SUMOHandler:
             
         return traci.lane.getLastStepHaltingNumber(lane) 
 
+
     def getAllLanesQueueLengths(self):
           
         lens = []
@@ -185,8 +186,20 @@ class SUMOHandler:
                     tl_count += 1
                     
             
-                
-            
+    def getLightsPhases(self):
+        lights = traci.trafficlight.getIDList()
+        self.phases_counts = {}
+        
+        for light in lights:
+            prog = traci.trafficlight.getAllProgramLogics(light)
+            self.phases_counts[light] = len(prog[0].getPhases())
+
+    def setLightsPhases(self, phase_idxs, dur):
+        lights = traci.trafficlight.getIDList()        
+        for i, light in enumerate(lights):
+            traci.trafficlight.setPhase(light, phase_idxs[i])
+            traci.trafficlight.setPhaseDuration(light, dur)
+        
     #-------------------------------------------------------------------------       
     def reset(self):
         self.time = 0

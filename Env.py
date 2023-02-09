@@ -24,10 +24,12 @@ class AllLightsEnv(Env):
         
         self.sumo_handler = sumo_handler
     
+        self.sumo_handler.getLightsPhases()
+        
         ## We have two actions for each traffic light. It can be green (integer
         ## value of 1) or red (value 0). 
-        num_actions = self.sumo_handler.getNumLights()
-        self.action_space = spaces.MultiBinary(num_actions)    
+        num_actions = len( self.sumo_handler.phases_counts.keys() )
+        self.action_space = spaces.Box(low=0, high=self.sumo_handler.phases_counts.values()-1, shape=(num_actions,1), dtype=np.uint8)  
 
         ## Here the queue length of each lane is considered as a state.
         count = self.sumo_handler.getNumLanes()
@@ -73,8 +75,8 @@ class AllLightsEnv(Env):
     #-------------------------------------------------------------------------
     def step(self, action):
         
+        self.setLightsPhases(action[0], self.step_duration)
         for i in range(self.step_duration):
-            self.sumo_handler.setAllTrafficLights(action[0]>0.5)
             self.sumo_handler.step()
         
         obs = self.sumo_handler.getAllLanesQueueLengths()
